@@ -13,16 +13,20 @@ A Python-based automation tool that automatically organizes files into categoriz
 
 **Supported File Types:**
 
- Category        Extensions 
+| Category | Extensions |
+|---|---|
+| Images | .jpg, .jpeg, .png |
+| Videos | .mp4 |
+| Word Documents | .docx |
+| Excel Files | .xlsx |
+| Presentations | .pptx |
 
- Images          .jpg, .jpeg, .png 
- Videos          .mp3, .mp4 
- Word Documents  .docx
- Excel Files     .xlsx
- Presentations   .pptx
+**How to Run**
+1. Clone this repository
+2. Run `python file_organizer.py`
+3. Enter the path of the folder you want to organize
 
-**Technologies Used:**
-
+**Technologies Used**
 - Python
 - os module
 - shutil module
