@@ -2,34 +2,24 @@ import os
 import shutil
 from google import genai
 
-def create_folders(categories, ai_categories):
-    for x in categories:
-        if not os.path.exists(x):
-            os.makedirs(x)
-
+def create_folders(ai_categories):
     for x in ai_categories:
         if not os.path.exists(x):
             os.makedirs(x)
-def arrange_files(categories, ai_categories):
-    ignored_folders = set(categories) | set(ai_categories)
+
+def arrange_files(ai_categories):
+    ignored_folders =  set(ai_categories)
     ignored_files = {"file-organizer.py", "README.md"}
     for file in os.listdir('.'):
         if not os.path.isfile(file):
             continue
         if file in ignored_folders or file in ignored_files:
             continue
-        name, ext = os.path.splitext(file)
-        ext = ext.lower()
-        for category, extensions in categories.items():
-                if ext in extensions:
-                    print(category)
-                    shutil.move(file, category)
-                    break
-        else:
-                category = classify_file(file, ai_categories)
-                if category in ai_categories:
-                    print(f"{file} ➡ {category}")
-                    shutil.move(file, category)
+        category = classify_file(file, ai_categories)
+        if category in ai_categories:
+            print(f"{file} ➡ {category}")
+            shutil.move(file, category)
+                    
 
 def classify_file(file_name, ai_categories):
     client = genai.Client()
@@ -69,24 +59,38 @@ Unknown
         return category
     elif category == "Unknown":
          print("AI could not find a suitable category")
+         return "Unknown"
     else:
         print("Unexpected AI Response: ", response.text)
+        return "Unknown"
+
+def add_categories(ai_categories):
+    user_categories = input(
+    "Enter your categories separated by commas: "
+).split(",")
+    user_categories = [
+    category.strip()
+    for category in user_categories
+    if category.strip()
+]
+    ai_categories.extend(user_categories)
 
 def main():
- categories = {
-    "images" : [".jpg",".png",".jpeg"],
-    "videos" : [".mp3",".mp4"],
-    "Word" : [".docx"],
-    "Presentations" : [".pptx"],
-    "Exel" : [".xlsx"]
-}
- ai_categories = ["University","Work","Project","Personal","Finance"]
+ ai_categories = []
+ choice = input("Do you want to add new categories? (y/n)").lower()
+ if choice == 'y':
+     add_categories(ai_categories)
+ elif choice == 'n':
+     pass
+ else:
+     print("Invalid choice")
+     return
 
  client = genai.Client()
  print("Gen AI Connected!")
  
- create_folders(categories, ai_categories)
- arrange_files(categories, ai_categories)
+ create_folders(ai_categories)
+ arrange_files( ai_categories)
 
  print("Files Organized Successfully")
 
