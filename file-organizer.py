@@ -87,7 +87,9 @@ def add_categories(ai_categories):
     for category in user_categories
     if category.strip()
 ]
-    ai_categories.extend(user_categories)
+    for category in user_categories:
+        if category not in ai_categories:
+         ai_categories.append(category)
     save_categories(ai_categories)
 
 def main():
