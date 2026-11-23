@@ -1,418 +1,217 @@
 # AI-Powered File Organizer
 
-> A privacy-aware Python file organizer that uses Google Gemini to intelligently classify user files into customizable folders. 
+A privacy-aware command-line tool that uses Google Gemini to sort files into folders you define, based on what a file *is for*, not just its extension. Every run can be previewed with a dry run and reversed with a single undo command.
 
----
+![Category selection and scan](docs/demo-1.png)
+![Deep scan consent and organization plan](docs/demo-2.png)
 
 ## Table of Contents
 
-* [Overview](#overview)
-* [Problem Statement](#problem-statement)
-* [Dataset Description](#dataset-description)
-* [Tools & Technologies](#tools--technologies)
-* [Methods](#methods)
-* [Key Insights](#key-insights)
-* [Dashboard / Model / Output](#dashboard--model--output)
-* [How to Run This Project](#how-to-run-this-project)
-* [Result & Conclusion](#result--conclusion)
-* [Future Work](#future-work)
-* [Author & Contact](#author--contact)
-
----
+- [Overview](#overview)
+- [Problem Statement](#problem-statement)
+- [Features](#features)
+- [How It Works](#how-it-works)
+- [Tech Stack](#tech-stack)
+- [Project Structure](#project-structure)
+- [Getting Started](#getting-started)
+- [Usage](#usage)
+- [Testing](#testing)
+- [Privacy & Safety](#privacy--safety)
+- [Limitations](#limitations)
+- [Future Work](#future-work)
+- [Author](#author)
 
 ## Overview
 
-The **AI-Powered File Organizer** is a Python-based file management system that automatically organizes files into user-defined folders using Generative AI.
+Traditional organizers map extensions to folders (`.pdf` → Documents). That tells you the *format* of a file, not its *purpose*. `Electricity_bill.pdf` and `Python_Operators.pdf` are both PDFs, but they belong in very different places.
 
-Unlike traditional file organizers that depend entirely on fixed file extensions, this project uses **Google Gemini** to understand the context and purpose of a file from its filename and extension.
+This tool sends each filename to Gemini together with your list of categories, and Gemini picks the single best folder, or says `Unknown` when the name carries no real meaning. Files that stay unknown can optionally go through a deeper content scan, but only after you explicitly agree.
 
-Users define their own categories, and the system creates and remembers those categories using JSON persistence. Files that cannot be confidently classified are collected and, with explicit user permission, can undergo deeper content-based AI analysis.
-
-The project was developed incrementally from a basic Python file organizer into a more intelligent, configurable, and privacy-aware AI application.
-
----
+The project started as a single-file script and was refactored into a modular package with a proper CLI, retry/fallback logic, dry-run mode and undo support.
 
 ## Problem Statement
 
-Managing files manually becomes difficult when a directory contains different types of documents, assignments, presentations, spreadsheets, images, code files, and personal documents.
+Folders like Downloads fill up with assignments, bills, slides, spreadsheets, images and personal documents. Rule-based sorting cannot tell them apart when they share an extension, and sending every file's contents to an AI service is a privacy risk. The goal: **context-aware sorting that is flexible, reversible, and private by default.**
 
-Traditional file organizers often rely on fixed rules such as:
+## Features
 
-```text
-.docx → Word
-.xlsx → Excel
-.jpg  → Images
-.pdf  → Documents
+- **Context-aware classification**: Gemini decides based on filename and extension, within *your* categories.
+- **Custom or default categories**: pass them via CLI, enter them interactively, or use the built-in defaults. Categories are saved to `ai_categories.json`.
+- **Unknown handling**: generic names like `1.pdf`, `scan.pdf` or `untitled.docx` are returned as `Unknown` rather than guessed.
+- **Opt-in deep content scan**: unknown files with a supported extension can be uploaded to Gemini for content-based classification, after a privacy disclosure and explicit consent. The uploaded file is deleted afterwards (best effort).
+- **Dry run**: `--dry-run` shows the planned moves in a table without touching your files.
+- **Undo**: `--undo` rolls back the last organization session using a transaction log (`organization_history.json`).
+- **Confirmation before moving**: you review the plan table and approve it first.
+- **Resilient API handling**: retries, automatic fallback across multiple Gemini models, and a clear distinction between *API failures* (503 / 429 / network) and genuine *Unknown* classifications.
+- **Concurrent classification**: filenames are classified in parallel with a thread pool.
+- **Rich terminal UI**: tables, panels and status spinners via [Rich](https://github.com/Textualize/rich).
+- **Testable design**: the Gemini client can be injected into `OrganizerEngine`, so the logic can be tested without real API calls.
+
+## How It Works
+
 ```
-
-Although this approach works for obvious file types, it does not understand the **context or purpose** of a file.
-
-For example:
-
-```text
-Python_Dictionaries.pptx
-Electricity_bill.pdf
-for_loops_Assignment.docx
-```
-
-have different purposes even though their extensions only describe their file formats.
-
-The goal of this project was to create a system that allows users to define their own organizational structure while using AI to make more intelligent classification decisions.
-
----
-
-## Tools & Technologies
-
-### Programming Language
-
-* **Python**
-
-### Libraries
-
-* `os` — file and directory handling
-* `shutil` — moving files
-* `json` — persistent category storage
-
-### AI / API
-
-* **Google Gemini API**
-* **Google Gen AI Python SDK**
-
-### Development Tools
-
-* **Visual Studio Code**
-* **PowerShell**
-* **Git**
-* **GitHub**
-
----
-
-## Methods
-
-### 1. User-Defined Categories
-
-The user can define categories such as:
-
-```text
-Word, Excel, Personal, Finance, Projects
-```
-
-The system automatically creates the corresponding folders.
-
-Duplicate categories are prevented.
-
----
-
-### 2. Persistent Category Storage
-
-Categories are stored in a JSON file:
-
-```text
-ai_categories.json
-```
-
-On the first run, the user defines the categories.
-
-On subsequent runs, the existing categories are loaded automatically, with an option to add new categories.
-
----
-
-### 3. File Scanning
-
-The program scans the current directory and ignores:
-
-* existing category folders
-* the organizer's own Python file
-* README
-* JSON configuration
-* Git configuration
-* development/test files
-
-This prevents the program from processing its own infrastructure.
-
----
-
-### 4. AI-Based Classification
-
-For each file, Gemini receives:
-
-```text
-File name
-File extension
-Available user-defined categories
-```
-
-The model is instructed to select exactly one category or return:
-
-```text
-Unknown
-```
-
-This allows the system to make context-aware classification decisions instead of relying entirely on hardcoded rules.
-
----
-
-### 5. Unknown File Handling
-
-Files that Gemini cannot confidently classify are collected instead of immediately interrupting the workflow.
-
-After all files have been processed, the user receives a single prompt asking whether they want AI to perform deeper content analysis.
-
-This prevents repetitive prompts when multiple files are unknown.
-
----
-
-### 6. Optional Content Analysis
-
-Content analysis requires explicit user permission.
-
-Only extensions included in the project's safe-analysis list are allowed to undergo deeper analysis:
-
-```python
-safe_extensions = [".txt", ".md", ".csv", ".json", ".pptx", ".py"]
-```
-
-When permitted, the selected file is uploaded to Gemini and analyzed using its actual content.
-
-The uploaded Gemini file is deleted after analysis when possible.
-
----
-
-### 7. Error Handling
-
-API requests are wrapped in exception handling so that failures such as:
-
-* network errors
-* API errors
-* SSL problems
-* failed uploads
-
-do not automatically terminate the entire program.
-
-Instead, the affected file is treated as unclassified and the organizer can continue.
-
----
-
-### 8. File Safety
-
-Before moving a file, the program checks whether a file with the same name already exists in the destination folder.
-
-If a duplicate exists, the move is skipped rather than overwriting the existing file.
-
-User-defined category names are also validated before being used as folder paths.
-
----
-
-## Key Insights
-
-### AI classification is more flexible than fixed extension rules
-
-A file extension tells us what format a file uses, but not necessarily why the file exists.
-
-For example:
-
-```text
-Electricity bill.pdf
-```
-
-and:
-
-```text
-Python Operators.pdf
-```
-
-are both PDF files but have completely different purposes.
-
-Using filename context allows Gemini to make a more meaningful classification.
-
----
-
-### User-defined categories make the system flexible
-
-Instead of forcing every user to follow the same folder structure, the system adapts to the organizational structure chosen by the user.
-
-For example, one user might choose:
-
-```text
-University
-Projects
-Finance
-Personal
-```
-
-while another might choose:
-
-```text
-Clients
-Bills
-Work
-Learning
-```
-
-The AI works with either structure.
-
----
-
-### AI should not always receive file contents
-
-Content-based AI analysis can provide deeper understanding, but it may also expose sensitive information to an external AI service.
-
-For this reason, the system follows a two-stage approach:
-
-```text
-Filename + Extension
+Scan directory (top-level files only)
         ↓
-AI Classification
+Filename + extension + your categories → Gemini
         ↓
-Unknown?
-        ↓
-Ask for permission
-        ↓
-Optional Content Analysis
+   ┌────────────┬───────────────┬─────────────┐
+ Category     Unknown        API error
+   ↓            ↓               ↓
+ Planned     Eligible for     Reported,
+  move       deep scan?       file untouched
+                ↓
+     Privacy disclosure + consent
+                ↓
+       Content scan via Gemini
+                ↓
+   Plan table → confirm → move files → record history (for undo)
 ```
 
-This provides a balance between automation and privacy.
+**Result types from the classifier**
 
----
+| Result | Meaning |
+|---|---|
+| Category name | Confident match, added to the plan |
+| `Unknown` | Name was generic or no category fit; candidate for deep scan |
+| `API_ERROR` | Request failed after retries and fallbacks; file left untouched |
 
-### Persistence improves usability
+## Tech Stack
 
-Saving categories in JSON means users do not have to recreate their folder structure every time the program runs.
+- **Language:** Python 3
+- **AI:** Google Gemini via the `google-genai` SDK
+- **Terminal UI:** `rich`
+- **Config:** `python-dotenv` (`.env` for the API key)
+- **Standard library:** `os`, `shutil`, `json`, `argparse`, `concurrent.futures`
+- **Tools:** Git, GitHub, VS Code
 
-This turns a simple script into a reusable application.
+## Project Structure
 
----
-
-
-### Output
-
-The program displays the classification and movement of files in the terminal.
-
-Example:
-
-```text
-Python_Dictionaries.pptx ➡ Presentations
-Students list.xlsx ➡ Excel
-WhatsApp Image 2026...jpeg ➡ Personal
+```
+File-Organizer/
+├── main.py                 # Entry point
+├── src/
+│   └── file_organizer/
+│       ├── __init__.py     # Package exports
+│       ├── cli.py          # Argument parsing, prompts, Rich output
+│       ├── config.py       # Models, default categories, prompts, ignore lists
+│       ├── core.py         # OrganizerEngine: classification, planning, execution
+│       └── history.py      # HistoryManager: session log and undo
+├── tests/
+│   ├── test_core.py        # Engine tests
+│   └── test_history.py     # History / undo tests
+├── docs/                   # Screenshots used in this README
+├── .github/workflows/
+│   └── ci.yml              # CI workflow
+├── requirements.txt
+├── .env.example
+├── .gitignore
+└── README.md
 ```
 
-For uncertain files:
+## Getting Started
 
-```text
-AI could not find a suitable category for: unknown_file.xyz
-```
-
-If content analysis is permitted:
-
-```text
-1 files could not be classified
-Do you want AI to analyze their content? (y/n)y
-
-unknown_file.pdf ➡ Finance
-```
-
----
-
-## How to Run This Project
-
-### 1. Clone the repository
+**1. Clone the repository**
 
 ```bash
-git clone <your-github-repository-url>
-```
-
-### 2. Open the project folder
-
-```bash
+git clone https://github.com/zarakhan3913/File-Organizer.git
 cd File-Organizer
 ```
 
-### 3. Install the required package
+**2. Install dependencies**
 
 ```bash
-pip install google-genai
+pip install -r requirements.txt
 ```
 
-### 4. Configure your Gemini API key
+**3. Add your Gemini API key**
 
-Set your Gemini API key as an environment variable:
-
-```text
-GEMINI_API_KEY
-```
-
-Do **not** hardcode the API key inside the Python source code.
-
-### 5. Run the program
+Get a key from [Google AI Studio](https://aistudio.google.com/), then copy the example env file and fill it in:
 
 ```bash
-python file-organizer.py
+cp .env.example .env
+# edit .env and set GEMINI_API_KEY=your_key_here
 ```
 
-### 6. Define categories
+The key is read from the environment or `.env`. Never commit it.
 
-On the first run, enter categories separated by commas:
+## Usage
 
-```text
-University, Projects, Finance, Personal
+```bash
+python main.py
 ```
 
-The program creates the folders and stores the categories for future runs.
+| Flag | Description |
+|---|---|
+| `--path PATH` | Directory to organize (otherwise you are prompted, default `.`) |
+| `--dry-run` | Preview the plan without moving anything |
+| `--undo` | Roll back the last organization session |
+| `--categories "A, B, C"` | Use exactly these categories (replaces saved/default ones) |
+| `--add-categories "X, Y"` | Add categories to the existing list |
+| `--deep-scan` | Skip the deep-scan consent prompt (the privacy disclosure is still shown) |
 
----
+**Examples**
 
-## Result & Conclusion
+```bash
+# Preview what would happen in Downloads
+python main.py --path ~/Downloads --dry-run
 
-The project successfully evolved from a basic extension-based file organizer into a **user-configurable AI-powered file management system**.
+# Organize with your own categories
+python main.py --path ~/Downloads --categories "University, Projects, Finance, Personal"
 
-The final implementation provides:
+# Changed your mind
+python main.py --undo
+```
 
-* User-defined categories
-* Persistent category storage
-* AI-based file classification
-* Unknown-file handling
-* Optional content-based analysis
-* User permission before deeper AI analysis
-* Duplicate-file protection
-* Category validation
-* API error handling
-* Uploaded-file cleanup
-* Git/GitHub version control
+Default categories: `Invoices & Finance`, `Resumes & Career`, `Documents & Notes`, `Spreadsheets & Data`, `Code & Development`, `Media & Images`.
 
-The project also provided practical experience in **Python automation, API integration, Generative AI, prompt engineering, JSON persistence, exception handling, file-system operations, privacy considerations, debugging, and iterative software development**.
+## Testing
 
-More importantly, the project demonstrated that integrating AI into an application is not only about generating an AI response. Reliable AI applications also require thoughtful handling of **errors, privacy, user control, persistence, and real-world edge cases**.
+The test suite uses `pytest` and a mocked Gemini client, so it runs offline and needs no API key.
 
----
+```bash
+python -m pytest -v
+```
+
+**What is covered (8 tests)**
+
+- File eligibility rules (what gets ignored)
+- Filename classification with a mocked Gemini response
+- Responses outside the category list are treated as `Unknown`
+- Plan generation and dry-run execution
+- API failures are reported separately from `Unknown`
+- Plan table rendering
+- History recording and undo, plus undo with empty history
+
+Tests also run automatically on every push and pull request via GitHub Actions (Python 3.10, 3.11, 3.12).
+
+## Privacy & Safety
+
+- **Filename-only by default.** Only the file name, extension and your category list are sent to Gemini during normal classification.
+- **Deep scan is opt-in.** File contents are uploaded only after a disclosure and your confirmation, and only for supported extensions. A supported extension does *not* mean a file is safe to upload, so avoid sensitive or confidential files.
+- **No overwriting.** If a file with the same name already exists in the destination folder, the move is skipped.
+- **Reversible.** Every executed move is logged, so `--undo` can restore files to their original locations.
+- **Config and hidden files are ignored** (`.env`, `ai_categories.json`, `organization_history.json`, dotfiles, etc.).
+- **API key stays out of the code** and is loaded from the environment.
+
+## Limitations
+
+- Only top-level files in the chosen directory are processed (no recursion).
+- Filename-based results are only as good as the filenames; vague names end up as `Unknown`.
+- Results depend on Gemini availability and API quota.
+- Undo restores the most recent session; run it again to step further back.
 
 ## Future Work
 
-Potential future improvements include:
+- Wider test coverage (deep scan and CLI flows)
+- Optional recursive scanning
+- Handling of duplicate-name conflicts (rename instead of skip)
+- Activity logs and classification confidence scores
+- Local/offline model option for sensitive environments
+- Packaging with `pyproject.toml` and a `file-organizer` console command
 
-* Support for more content-analysis file formats
-* Better logging and activity reports
-* Classification confidence scores
-* A graphical user interface
-* Configuration settings for AI behavior
-* Local/offline AI processing for privacy-sensitive environments
-* Automated testing
-* Improved file preview and classification history
-
----
-
-## Author & Contact
+## Author
 
 **Zara Khan**
+Computer Science Student | Generative AI Enthusiast
 
-Computer Science Student | Python Instructor | Generative AI Enthusiast
-
-**GitHub:** [Your GitHub Profile](https://github.com/)
-**LinkedIn:** [Your LinkedIn Profile](https://www.linkedin.com/)
-
----
-
-## Project Status
-
-**Status: Completed Working Prototype**
-
-The current version successfully demonstrates the complete AI-powered file organization workflow with persistent categories, optional content analysis, and basic safety and reliability measures.
+GitHub: [zarakhan3913](https://github.com/zarakhan3913) 

@@ -1,2 +1,33 @@
+# Python bytecode and environments
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+env/
+
+# Environment and sensitive keys
+.env
+.env.local
+
+# Testing and coverage caches
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Application state and logs
+organization_history.json
 ai_categories.json
+*.log
+
+# IDE and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+sample_data/
+ai_categories.json
+organization_history.json
+.env
 __pycache__/
