@@ -211,7 +211,7 @@ Tests also run automatically on every push and pull request via GitHub Actions (
 
 ## Author
 
-**Zara Khan**
+**Zara Naseer**
 Computer Science Student | Generative AI Enthusiast
 
 GitHub: [zarakhan3913](https://github.com/zarakhan3913) 
